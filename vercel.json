@@ -1,5 +1,12 @@
 {
+  "functions": {
+    "api/redirect.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/((?!_next|api|favicon.ico|.*\\.).+)", "destination": "/api/redirect?code=$1" },
     { "source": "/(.*)", "destination": "/" }
   ]
 }
