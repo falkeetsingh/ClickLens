@@ -1,42 +1,62 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://uquvvzokpfkbqvngbmeq.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxdXZ2em9rcGZrYnF2bmdibWVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2ODg0MDAsImV4cCI6MjA3MTI2NDQwMH0.J4AvRSSZjLQfLrXon36kqGw87EkNm1Wqo_fksKMXdPs'
+const supabaseUrl = import.meta.env.VITE_BASE_URL
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export default async function handler(req, res) {
   const { code } = req.query;
   
-  console.log('Redirect API called with code:', code);
+  console.log('Full code received:', code);
   
   if (!code) {
-    console.log('No code provided, redirecting to home');
     return res.redirect(302, '/');
   }
 
   try {
+    // Remove 'r/' prefix if present (since your DB stores just the code)
+    const shortCode = code.startsWith('r/') ? code.substring(2) : code;
+    console.log('Short code after cleanup:', shortCode);
+    
     const supabase = createClient(supabaseUrl, supabaseKey)
     
-    // Query directly from your database
     const { data, error } = await supabase
       .from('urls')
-      .select('original_url')
-      .eq('short_code', code)
+      .select('id, original_url')
+      .eq('short_code', shortCode)
       .single()
 
-    console.log('Database query result:', { data, error });
+    console.log('Database result:', { data, error });
 
     if (error || !data) {
-      console.log('URL not found, redirecting to home');
+      console.log('URL not found');
       return res.redirect(302, '/');
     }
 
-    // Optionally increment click count
-    await supabase
-      .from('urls')
-      .update({ clicks: supabase.raw('clicks + 1') })
-      .eq('short_code', code)
+    // Log the click for analytics (same structure as your redirect-new function)
+    const userAgent = req.headers['user-agent'] || '';
+    const referrer = req.headers['referer'] || '';
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const realIp = req.headers['x-real-ip'];
+    const ipAddress = forwardedFor?.split(',')[0] || realIp || 'unknown';
+
+    // Fire and forget click logging
+    supabase
+      .from('url_clicks')
+      .insert({
+        url_id: data.id,
+        ip_address: ipAddress,
+        referrer: referrer,
+        user_agent: userAgent,
+        country: null,
+        city: null,
+      })
+      .then(() => console.log('Click logged successfully'))
+      .catch(err => console.error('Click log error:', err));
 
     console.log('Redirecting to:', data.original_url);
+    
+    // Add cache control headers like your Supabase function
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     return res.redirect(302, data.original_url);
     
   } catch (error) {

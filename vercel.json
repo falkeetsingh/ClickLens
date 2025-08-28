@@ -1,7 +1,9 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/((?!_next|api|favicon.ico|login|signup|dashboard|.*\\.).+)", "destination": "/api/redirect?code=$1" },
+    { 
+      "source": "/r/:code",
+      "destination": "/api/redirect?code=r/:code"
+    },
     { "source": "/(.*)", "destination": "/" }
   ]
 }
