@@ -1,25 +1,24 @@
 // api/redirect.js
 export default async function handler(req, res) {
   try {
-    // grab the short code from query (?code=xyz)
     const { code } = req.query;
 
     if (!code) {
       return res.redirect(302, "/");
     }
 
-    // call your Supabase Edge Function instead of duplicating logic
-    const supabaseFunctionUrl = `${process.env.BASE_URL}/functions/v1/redirect-new`;
+    // Forward to Supabase Edge Function with the same query
+    const supabaseFunctionUrl = `${process.env.BASE_URL}/functions/v1/redirect-new?code=${code}`;
 
     const response = await fetch(supabaseFunctionUrl, {
       method: req.method,
       headers: {
-        ...req.headers,
-        host: undefined, // remove host header to avoid conflicts
+        "Content-Type": req.headers["content-type"] || "application/json",
       },
+      body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined,
     });
 
-    // forward redirect headers/status back to client
+    // Copy Supabase response status & headers
     res.status(response.status);
     response.headers.forEach((value, key) => {
       res.setHeader(key, value);
