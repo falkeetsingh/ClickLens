@@ -1,9 +1,8 @@
 {
   "rewrites": [
-    { 
+    {
       "source": "/r/:code",
-      "destination": "/api/redirect?code=r/:code"
-    },
-    { "source": "/(.*)", "destination": "/" }
+      "destination": "https://your-project-id.supabase.co/functions/v1/redirect-new?code=:code"
+    }
   ]
 }
