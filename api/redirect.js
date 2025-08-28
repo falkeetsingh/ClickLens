@@ -12,8 +12,8 @@ export default async function handler(req, res) {
     // Import Supabase inside the try block
     const { createClient } = await import('@supabase/supabase-js');
     
-    const supabaseUrl = 'https://uquvvzokpfkbqvngbmeq.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxdXZ2em9rcGZrYnF2bmdibWVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2ODg0MDAsImV4cCI6MjA3MTI2NDQwMH0.J4AvRSSZjLQfLrXon36kqGw87EkNm1Wqo_fksKMXdPs';
+    const supabaseUrl = import.meta.env.VITE_BASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
