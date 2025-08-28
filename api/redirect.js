@@ -13,7 +13,8 @@ export default async function handler(req, res) {
     const response = await fetch(supabaseFunctionUrl, {
       method: req.method,
       headers: {
-        "Content-Type": req.headers["content-type"] || "application/json",
+        ...req.headers,
+        host: undefined, 
       },
       body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined,
     });
