@@ -13,7 +13,6 @@ export default async function handler(req, res) {
     const response = await fetch(supabaseFunctionUrl, {
       method: req.method,
       headers: {
-        authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
         "Content-Type": req.headers["content-type"] || "application/json",
       },
       body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined,

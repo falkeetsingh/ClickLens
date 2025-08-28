@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+export const config = {
+  auth: false, // disable auth requirement for this function
+};
+
 serve(async (req) => {
   try {
     // Create Supabase client (service role for public access)
