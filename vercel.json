@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/r/:code", 
-      "destination": "$SUPABASE_URL/functions/v1/redirect-new?code=:code",
+      "destination": "$BASE_URL/functions/v1/redirect-new?code=:code",
       "headers": {
         "Authorization": "Bearer $SUPABASE_ANON_KEY"
       }
