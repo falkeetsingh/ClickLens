@@ -1,8 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/r/:code",
-      "destination": "https://uquvvzokpfkbqvngbmeq.supabase.co/functions/v1/redirect-new?code=:code"
+      "source": "/r/:code", 
+      "destination": "$SUPABASE_URL/functions/v1/redirect-new?code=:code",
+      "headers": {
+        "Authorization": "Bearer $SUPABASE_ANON_KEY"
+      }
     }
   ]
 }
