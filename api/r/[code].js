@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js'
 
 export default async function handler(req, res) {
   const { code } = req.query;
@@ -6,26 +7,39 @@ export default async function handler(req, res) {
     return res.redirect(302, "/");
   }
 
-  try {
-    const response = await fetch(`${process.env.BASE_URL}/functions/v1/redirect-new?code=${code}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
+  // Create Supabase client
+  const supabase = createClient(
+    process.env.BASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
+  );
 
-    if (response.status === 302) {
-      const location = response.headers.get('location');
-      return res.redirect(302, location);
+  try {
+    // Find the URL by short code
+    const { data: url, error } = await supabase
+      .from('urls')
+      .select('id, original_url')
+      .eq('short_code', code)
+      .single();
+
+    if (error || !url) {
+      return res.redirect(302, '/');
     }
 
-    // Handle error cases
-    const text = await response.text();
-    res.status(response.status).send(text);
+    // Log the click
+    await supabase
+      .from('url_clicks')
+      .insert({
+        url_id: url.id,
+        ip_address: req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || 'unknown',
+        referrer: req.headers.referer || '',
+        user_agent: req.headers['user-agent'] || '',
+      });
+
+    // Redirect to original URL
+    res.redirect(302, url.original_url);
 
   } catch (error) {
     console.error('Redirect error:', error);
-    res.status(500).send('Internal Server Error');
+    res.redirect(302, '/');
   }
 }

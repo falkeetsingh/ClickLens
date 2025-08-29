@@ -1,7 +1,11 @@
 {
+  "rewrites": [
+    { "source": "/r/:code", "destination": "/api/r/[code]" }
+  ],
   "functions": {
-    "api/**/*.js": {
-      "runtime": "@vercel/node"
+    "api/r/[code].js": {
+      "memory": 1024,
+      "maxDuration": 10
     }
   }
 }

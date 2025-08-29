@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { api, isValidUrl, copyToClipboard } from '../../lib/api'
@@ -126,9 +125,11 @@ const UrlShortener = () => {
                 Short URL
               </label>
               <div className="flex items-center space-x-2 p-3 bg-white border border-gray-200 rounded-lg">
-                <span className="flex-1 font-mono text-blue-600">{result.short_url}</span>
+                <span className="flex-1 font-mono text-blue-600">
+                  {`${window.location.origin}/r/${result.short_code}`}
+                </span>
                 <button
-                  onClick={() => handleCopy(result.short_url)}
+                  onClick={() => handleCopy(`${window.location.origin}/r/${result.short_code}`)}
                   className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
                 >
                   {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
