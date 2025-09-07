@@ -11,7 +11,16 @@ import {
   Calendar,
   CheckCircle,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Globe,
+  Smartphone,
+  Monitor,
+  MapPin,
+  TrendingUp,
+  Clock,
+  BarChart3,
+  Users,
+  MousePointerClick
 } from 'lucide-react'
 
 const Dashboard = () => {
@@ -21,6 +30,7 @@ const Dashboard = () => {
   const [error, setError] = useState('')
   const [copiedId, setCopiedId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+  const [expandedRows, setExpandedRows] = useState(new Set())
 
   const fetchUrls = async () => {
     try {
@@ -67,6 +77,16 @@ const Dashboard = () => {
     }
   }
 
+  const toggleRowExpansion = (urlId) => {
+    const newExpanded = new Set(expandedRows)
+    if (newExpanded.has(urlId)) {
+      newExpanded.delete(urlId)
+    } else {
+      newExpanded.add(urlId)
+    }
+    setExpandedRows(newExpanded)
+  }
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -83,6 +103,56 @@ const Dashboard = () => {
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  // Safe analytics access with fallbacks
+  const getAnalytics = (url) => {
+    return url.analytics || {}
+  }
+
+  const getTotalClicks = (url) => {
+    const analytics = getAnalytics(url)
+    return analytics.total_clicks || 0
+  }
+
+  const getClicksToday = () => {
+    const today = new Date().toDateString()
+    return urls.reduce((sum, url) => {
+      const analytics = getAnalytics(url)
+      const dailyClicks = analytics.daily_clicks || []
+      const todayClicks = dailyClicks.find(click => 
+        new Date(click.date).toDateString() === today
+      )?.clicks || 0
+      return sum + todayClicks
+    }, 0)
+  }
+
+  const getTopBrowser = () => {
+    const browsers = {}
+    urls.forEach(url => {
+      const analytics = getAnalytics(url)
+      Object.entries(analytics.browsers || {}).forEach(([browser, count]) => {
+        browsers[browser] = (browsers[browser] || 0) + count
+      })
+    })
+    const topBrowser = Object.entries(browsers).sort((a, b) => b[1] - a[1])[0]
+    return topBrowser ? topBrowser[0] : 'N/A'
+  }
+
+  const getTopCountry = () => {
+    const countries = {}
+    urls.forEach(url => {
+      const analytics = getAnalytics(url)
+      Object.entries(analytics.countries || {}).forEach(([country, count]) => {
+        countries[country] = (countries[country] || 0) + count
+      })
+    })
+    const topCountry = Object.entries(countries).sort((a, b) => b[1] - a[1])[0]
+    return topCountry ? topCountry[0] : 'N/A'
+  }
+
+  const getTotalClicksAll = () => {
+    return urls.reduce((sum, url) => sum + getTotalClicks(url), 0)
   }
 
   if (!user) {
@@ -107,12 +177,12 @@ const Dashboard = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-2">
-            Manage your shortened URLs and view analytics
+            Comprehensive analytics for your shortened URLs
           </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Enhanced Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="bg-blue-100 p-3 rounded-lg">
@@ -128,12 +198,26 @@ const Dashboard = () => {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="bg-green-100 p-3 rounded-lg">
-                <Eye className="w-6 h-6 text-green-600" />
+                <MousePointerClick className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Clicks</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {urls.reduce((sum, url) => sum + url.analytics.total_clicks, 0)}
+                  {getTotalClicksAll()}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="bg-orange-100 p-3 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Today's Clicks</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {getClicksToday()}
                 </p>
               </div>
             </div>
@@ -156,6 +240,37 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Analytics Overview Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center mb-4">
+              <Globe className="w-5 h-5 text-blue-600 mr-2" />
+              <h3 className="text-lg font-medium text-gray-900">Top Browser</h3>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{getTopBrowser()}</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center mb-4">
+              <MapPin className="w-5 h-5 text-green-600 mr-2" />
+              <h3 className="text-lg font-medium text-gray-900">Top Country</h3>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">{getTopCountry()}</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center mb-4">
+              <BarChart3 className="w-5 h-5 text-purple-600 mr-2" />
+              <h3 className="text-lg font-medium text-gray-900">Avg. Clicks</h3>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">
+              {urls.length > 0 ? 
+                Math.round((getTotalClicksAll() / urls.length) * 100) / 100 
+                : 0}
+            </p>
           </div>
         </div>
 
@@ -208,13 +323,13 @@ const Dashboard = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      URL
+                      URL Details
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Short Link
+                      Performance
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Clicks
+                      Traffic Sources
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Created
@@ -225,73 +340,216 @@ const Dashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {urls.map((url) => (
-                    <tr key={url.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900 max-w-xs truncate">
-                              {url.original_url}
-                            </div>
-                            {url.analytics.last_click_time && (
-                              <div className="text-sm text-gray-500">
-                                Last clicked: {formatDateTime(url.analytics.last_click_time)}
+                  {urls.map((url) => {
+                    const analytics = getAnalytics(url)
+                    return (
+                      <React.Fragment key={url.id}>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <span className="text-sm font-mono text-blue-600">
+                                    {url.short_url}
+                                  </span>
+                                  <button
+                                    onClick={() => handleCopy(url.short_url, url.id)}
+                                    className="text-gray-400 hover:text-gray-600"
+                                  >
+                                    {copiedId === url.id ? (
+                                      <CheckCircle className="w-4 h-4 text-green-500" />
+                                    ) : (
+                                      <Copy className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                </div>
+                                <div className="text-sm text-gray-900 max-w-xs truncate">
+                                  {url.original_url}
+                                </div>
+                                <button
+                                  onClick={() => toggleRowExpansion(url.id)}
+                                  className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                                >
+                                  {expandedRows.has(url.id) ? 'Hide Details' : 'Show Analytics'}
+                                </button>
                               </div>
-                            )}
-                          </div>
-                          <a
-                            href={url.original_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="ml-2 text-gray-400 hover:text-gray-600"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm font-mono text-blue-600">
-                            {url.short_url}
-                          </span>
-                          <button
-                            onClick={() => handleCopy(url.short_url, url.id)}
-                            className="text-gray-400 hover:text-gray-600"
-                          >
-                            {copiedId === url.id ? (
-                              <CheckCircle className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <Eye className="w-4 h-4 text-gray-400 mr-1" />
-                          <span className="text-sm text-gray-900">
-                            {url.analytics.total_clicks}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {formatDate(url.created_at)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => handleDelete(url.id)}
-                          disabled={deletingId === url.id}
-                          className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                        >
-                          {deletingId === url.id ? (
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                              <a
+                                href={url.original_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ml-2 text-gray-400 hover:text-gray-600"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center">
+                                <Eye className="w-4 h-4 text-gray-400 mr-1" />
+                                <span className="text-sm font-medium text-gray-900">
+                                  {getTotalClicks(url)} clicks
+                                </span>
+                              </div>
+                              <div className="flex items-center">
+                                <Clock className="w-4 h-4 text-gray-400 mr-1" />
+                                <span className="text-xs text-gray-500">
+                                  {analytics.last_click_time ? 
+                                    `Last: ${formatDateTime(analytics.last_click_time)}` : 
+                                    'No clicks yet'
+                                  }
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center">
+                                <Globe className="w-4 h-4 text-gray-400 mr-1" />
+                                <span className="text-xs text-gray-600">
+                                  {Object.keys(analytics.browsers || {}).length} browsers
+                                </span>
+                              </div>
+                              <div className="flex items-center">
+                                <MapPin className="w-4 h-4 text-gray-400 mr-1" />
+                                <span className="text-xs text-gray-600">
+                                  {Object.keys(analytics.countries || {}).length} countries
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {formatDate(url.created_at)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <button
+                              onClick={() => handleDelete(url.id)}
+                              disabled={deletingId === url.id}
+                              className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                            >
+                              {deletingId === url.id ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                        {expandedRows.has(url.id) && (
+                          <tr>
+                            <td colSpan="5" className="px-6 py-4 bg-gray-50">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Browser Analytics */}
+                                <div className="bg-white p-4 rounded-lg shadow-sm">
+                                  <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                                    <Globe className="w-4 h-4 mr-2" />
+                                    Browser Analytics
+                                  </h4>
+                                  {Object.entries(analytics.browsers || {}).length > 0 ? (
+                                    <div className="space-y-2">
+                                      {Object.entries(analytics.browsers)
+                                        .sort((a, b) => b[1] - a[1])
+                                        .slice(0, 5)
+                                        .map(([browser, count]) => (
+                                          <div key={browser} className="flex justify-between items-center">
+                                            <span className="text-sm text-gray-600">{browser}</span>
+                                            <span className="text-sm font-medium text-gray-900">{count}</span>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-gray-500">No data available</p>
+                                  )}
+                                </div>
+
+                                {/* Country Analytics */}
+                                <div className="bg-white p-4 rounded-lg shadow-sm">
+                                  <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                                    <MapPin className="w-4 h-4 mr-2" />
+                                    Country Analytics
+                                  </h4>
+                                  {Object.entries(analytics.countries || {}).length > 0 ? (
+                                    <div className="space-y-2">
+                                      {Object.entries(analytics.countries)
+                                        .sort((a, b) => b[1] - a[1])
+                                        .slice(0, 5)
+                                        .map(([country, count]) => (
+                                          <div key={country} className="flex justify-between items-center">
+                                            <span className="text-sm text-gray-600">{country}</span>
+                                            <span className="text-sm font-medium text-gray-900">{count}</span>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-gray-500">No data available</p>
+                                  )}
+                                </div>
+
+                                {/* Device Analytics */}
+                                <div className="bg-white p-4 rounded-lg shadow-sm">
+                                  <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                                    <Monitor className="w-4 h-4 mr-2" />
+                                    Device Analytics
+                                  </h4>
+                                  {Object.entries(analytics.devices || {}).length > 0 ? (
+                                    <div className="space-y-2">
+                                      {Object.entries(analytics.devices)
+                                        .sort((a, b) => b[1] - a[1])
+                                        .map(([device, count]) => (
+                                          <div key={device} className="flex justify-between items-center">
+                                            <div className="flex items-center">
+                                              {device.toLowerCase().includes('mobile') ? 
+                                                <Smartphone className="w-3 h-3 mr-1 text-gray-400" /> :
+                                                <Monitor className="w-3 h-3 mr-1 text-gray-400" />
+                                              }
+                                              <span className="text-sm text-gray-600">{device}</span>
+                                            </div>
+                                            <span className="text-sm font-medium text-gray-900">{count}</span>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-gray-500">No data available</p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Daily Clicks Chart */}
+                              {analytics.daily_clicks && analytics.daily_clicks.length > 0 && (
+                                <div className="mt-6 bg-white p-4 rounded-lg shadow-sm">
+                                  <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                                    <BarChart3 className="w-4 h-4 mr-2" />
+                                    Daily Clicks (Last 7 Days)
+                                  </h4>
+                                  <div className="flex items-end space-x-2 h-20">
+                                    {analytics.daily_clicks.slice(-7).map((day, index) => {
+                                      const maxClicks = Math.max(...analytics.daily_clicks.slice(-7).map(d => d.clicks))
+                                      const height = maxClicks > 0 ? (day.clicks / maxClicks) * 60 : 0
+                                      return (
+                                        <div key={index} className="flex flex-col items-center">
+                                          <div 
+                                            className="bg-blue-500 rounded-t w-8 flex items-end justify-center"
+                                            style={{ height: `${height + 10}px` }}
+                                          >
+                                            <span className="text-xs text-white font-medium mb-1">
+                                              {day.clicks}
+                                            </span>
+                                          </div>
+                                          <span className="text-xs text-gray-500 mt-1">
+                                            {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                                          </span>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
