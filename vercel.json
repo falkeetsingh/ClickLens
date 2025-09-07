@@ -1,11 +1,8 @@
 {
   "rewrites": [
-    { "source": "/r/:code", "destination": "/api/r/[code]" }
-  ],
-  "functions": {
-    "api/r/[code].js": {
-      "memory": 1024,
-      "maxDuration": 10
+    { 
+      "source": "/r/:code", 
+      "destination": "https://uquvvzokpfkbqvngbmeq.supabase.co/functions/v1/redirect-new/:code" 
     }
-  }
+  ]
 }
