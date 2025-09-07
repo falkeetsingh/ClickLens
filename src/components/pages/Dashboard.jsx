@@ -1,5 +1,5 @@
-// src/pages/Dashboard.jsx
 import React, { useState, useEffect } from 'react'
+import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { api, copyToClipboard } from '../../lib/api'
 import { 
@@ -26,6 +26,7 @@ import {
 const Dashboard = () => {
   const { user } = useAuth()
   const [urls, setUrls] = useState([])
+  const [clicks, setClicks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copiedId, setCopiedId] = useState(null)
@@ -45,9 +46,46 @@ const Dashboard = () => {
     }
   }
 
+  const fetchClicks = async () => {
+    try {
+      // Import supabase at the top of your file: import { supabase } from '../../lib/supabase'
+      const { data: clicks, error } = await supabase
+        .from('url_clicks')
+        .select(`
+          id,
+          url_id,
+          clicked_at,
+          ip_address,
+          referrer,
+          user_agent,
+          country,
+          city,
+          device_type,
+          browser,
+          os,
+          urls!inner(
+            id,
+            user_id,
+            short_code,
+            original_url
+          )
+        `)
+        .eq('urls.user_id', user.id)
+        .order('clicked_at', { ascending: false })
+
+      if (error) throw error
+      
+      setClicks(clicks || [])
+    } catch (err) {
+      console.error('Failed to fetch clicks:', err)
+      setClicks([])
+    }
+  }
+
   useEffect(() => {
     if (user) {
       fetchUrls()
+      fetchClicks()
     }
   }, [user])
 
@@ -70,6 +108,8 @@ const Dashboard = () => {
       setDeletingId(urlId)
       await api.deleteUrl(urlId)
       setUrls(urls.filter(url => url.id !== urlId))
+      // Also remove associated clicks from state
+      setClicks(clicks.filter(click => click.url_id !== urlId))
     } catch (err) {
       setError(err.message || 'Failed to delete URL')
     } finally {
@@ -105,54 +145,113 @@ const Dashboard = () => {
     })
   }
 
-  // Safe analytics access with fallbacks
-  const getAnalytics = (url) => {
-    return url.analytics || {}
+  // Analytics helper functions
+  const getClicksForUrl = (urlId) => {
+    return clicks.filter(click => click.url_id === urlId)
   }
 
   const getTotalClicks = (url) => {
-    const analytics = getAnalytics(url)
-    return analytics.total_clicks || 0
+    return getClicksForUrl(url.id).length
+  }
+
+  const getLastClickTime = (url) => {
+    const urlClicks = getClicksForUrl(url.id)
+    if (urlClicks.length === 0) return null
+    
+    const sortedClicks = urlClicks.sort((a, b) => new Date(b.clicked_at) - new Date(a.clicked_at))
+    return sortedClicks[0].clicked_at
   }
 
   const getClicksToday = () => {
     const today = new Date().toDateString()
-    return urls.reduce((sum, url) => {
-      const analytics = getAnalytics(url)
-      const dailyClicks = analytics.daily_clicks || []
-      const todayClicks = dailyClicks.find(click => 
-        new Date(click.date).toDateString() === today
-      )?.clicks || 0
-      return sum + todayClicks
-    }, 0)
+    return clicks.filter(click => 
+      new Date(click.clicked_at).toDateString() === today
+    ).length
+  }
+
+  const getBrowserStats = (urlId = null) => {
+    const relevantClicks = urlId ? getClicksForUrl(urlId) : clicks
+    const browsers = {}
+    
+    relevantClicks.forEach(click => {
+      const browser = click.browser || 'Unknown'
+      browsers[browser] = (browsers[browser] || 0) + 1
+    })
+    
+    return browsers
+  }
+
+  const getCountryStats = (urlId = null) => {
+    const relevantClicks = urlId ? getClicksForUrl(urlId) : clicks
+    const countries = {}
+    
+    relevantClicks.forEach(click => {
+      const country = click.country || 'Unknown'
+      countries[country] = (countries[country] || 0) + 1
+    })
+    
+    return countries
+  }
+
+  const getDeviceStats = (urlId = null) => {
+    const relevantClicks = urlId ? getClicksForUrl(urlId) : clicks
+    const devices = {}
+    
+    relevantClicks.forEach(click => {
+      const device = click.device_type || 'Unknown'
+      devices[device] = (devices[device] || 0) + 1
+    })
+    
+    return devices
+  }
+
+  const getDailyClicksForUrl = (urlId) => {
+    const urlClicks = getClicksForUrl(urlId)
+    const dailyClicks = {}
+    
+    urlClicks.forEach(click => {
+      const date = new Date(click.clicked_at).toDateString()
+      dailyClicks[date] = (dailyClicks[date] || 0) + 1
+    })
+    
+    // Convert to array format and get last 7 days
+    const last7Days = []
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date()
+      date.setDate(date.getDate() - i)
+      const dateStr = date.toDateString()
+      last7Days.push({
+        date: date.toISOString(),
+        clicks: dailyClicks[dateStr] || 0
+      })
+    }
+    
+    return last7Days
   }
 
   const getTopBrowser = () => {
-    const browsers = {}
-    urls.forEach(url => {
-      const analytics = getAnalytics(url)
-      Object.entries(analytics.browsers || {}).forEach(([browser, count]) => {
-        browsers[browser] = (browsers[browser] || 0) + count
-      })
-    })
+    const browsers = getBrowserStats()
     const topBrowser = Object.entries(browsers).sort((a, b) => b[1] - a[1])[0]
     return topBrowser ? topBrowser[0] : 'N/A'
   }
 
   const getTopCountry = () => {
-    const countries = {}
-    urls.forEach(url => {
-      const analytics = getAnalytics(url)
-      Object.entries(analytics.countries || {}).forEach(([country, count]) => {
-        countries[country] = (countries[country] || 0) + count
-      })
-    })
+    const countries = getCountryStats()
     const topCountry = Object.entries(countries).sort((a, b) => b[1] - a[1])[0]
     return topCountry ? topCountry[0] : 'N/A'
   }
 
   const getTotalClicksAll = () => {
-    return urls.reduce((sum, url) => sum + getTotalClicks(url), 0)
+    return clicks.length
+  }
+
+  const getUrlsThisMonth = () => {
+    return urls.filter(url => {
+      const urlDate = new Date(url.created_at)
+      const now = new Date()
+      return urlDate.getMonth() === now.getMonth() && 
+             urlDate.getFullYear() === now.getFullYear()
+    }).length
   }
 
   if (!user) {
@@ -231,12 +330,7 @@ const Dashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">This Month</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {urls.filter(url => {
-                    const urlDate = new Date(url.created_at)
-                    const now = new Date()
-                    return urlDate.getMonth() === now.getMonth() && 
-                           urlDate.getFullYear() === now.getFullYear()
-                  }).length}
+                  {getUrlsThisMonth()}
                 </p>
               </div>
             </div>
@@ -279,7 +373,10 @@ const Dashboard = () => {
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h2 className="text-lg font-medium text-gray-900">Your URLs</h2>
             <button
-              onClick={fetchUrls}
+              onClick={() => {
+                fetchUrls()
+                fetchClicks()
+              }}
               disabled={loading}
               className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 disabled:opacity-50"
             >
@@ -341,7 +438,8 @@ const Dashboard = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {urls.map((url) => {
-                    const analytics = getAnalytics(url)
+                    const urlClicks = getClicksForUrl(url.id)
+                    const lastClickTime = getLastClickTime(url)
                     return (
                       <React.Fragment key={url.id}>
                         <tr className="hover:bg-gray-50">
@@ -350,10 +448,13 @@ const Dashboard = () => {
                               <div className="flex-1">
                                 <div className="flex items-center space-x-2 mb-1">
                                   <span className="text-sm font-mono text-blue-600">
-                                    {url.short_url}
+                                    {url.qr_code_url ? url.qr_code_url.replace(/.*\//, '') : url.short_code}
                                   </span>
                                   <button
-                                    onClick={() => handleCopy(url.short_url, url.id)}
+                                    onClick={() => handleCopy(
+                                      url.qr_code_url || `${window.location.origin}/${url.short_code}`, 
+                                      url.id
+                                    )}
                                     className="text-gray-400 hover:text-gray-600"
                                   >
                                     {copiedId === url.id ? (
@@ -394,8 +495,8 @@ const Dashboard = () => {
                               <div className="flex items-center">
                                 <Clock className="w-4 h-4 text-gray-400 mr-1" />
                                 <span className="text-xs text-gray-500">
-                                  {analytics.last_click_time ? 
-                                    `Last: ${formatDateTime(analytics.last_click_time)}` : 
+                                  {lastClickTime ? 
+                                    `Last: ${formatDateTime(lastClickTime)}` : 
                                     'No clicks yet'
                                   }
                                 </span>
@@ -407,13 +508,13 @@ const Dashboard = () => {
                               <div className="flex items-center">
                                 <Globe className="w-4 h-4 text-gray-400 mr-1" />
                                 <span className="text-xs text-gray-600">
-                                  {Object.keys(analytics.browsers || {}).length} browsers
+                                  {Object.keys(getBrowserStats(url.id)).length} browsers
                                 </span>
                               </div>
                               <div className="flex items-center">
                                 <MapPin className="w-4 h-4 text-gray-400 mr-1" />
                                 <span className="text-xs text-gray-600">
-                                  {Object.keys(analytics.countries || {}).length} countries
+                                  {Object.keys(getCountryStats(url.id)).length} countries
                                 </span>
                               </div>
                             </div>
@@ -445,9 +546,9 @@ const Dashboard = () => {
                                     <Globe className="w-4 h-4 mr-2" />
                                     Browser Analytics
                                   </h4>
-                                  {Object.entries(analytics.browsers || {}).length > 0 ? (
+                                  {Object.entries(getBrowserStats(url.id)).length > 0 ? (
                                     <div className="space-y-2">
-                                      {Object.entries(analytics.browsers)
+                                      {Object.entries(getBrowserStats(url.id))
                                         .sort((a, b) => b[1] - a[1])
                                         .slice(0, 5)
                                         .map(([browser, count]) => (
@@ -468,9 +569,9 @@ const Dashboard = () => {
                                     <MapPin className="w-4 h-4 mr-2" />
                                     Country Analytics
                                   </h4>
-                                  {Object.entries(analytics.countries || {}).length > 0 ? (
+                                  {Object.entries(getCountryStats(url.id)).length > 0 ? (
                                     <div className="space-y-2">
-                                      {Object.entries(analytics.countries)
+                                      {Object.entries(getCountryStats(url.id))
                                         .sort((a, b) => b[1] - a[1])
                                         .slice(0, 5)
                                         .map(([country, count]) => (
@@ -491,9 +592,9 @@ const Dashboard = () => {
                                     <Monitor className="w-4 h-4 mr-2" />
                                     Device Analytics
                                   </h4>
-                                  {Object.entries(analytics.devices || {}).length > 0 ? (
+                                  {Object.entries(getDeviceStats(url.id)).length > 0 ? (
                                     <div className="space-y-2">
-                                      {Object.entries(analytics.devices)
+                                      {Object.entries(getDeviceStats(url.id))
                                         .sort((a, b) => b[1] - a[1])
                                         .map(([device, count]) => (
                                           <div key={device} className="flex justify-between items-center">
@@ -515,15 +616,15 @@ const Dashboard = () => {
                               </div>
 
                               {/* Daily Clicks Chart */}
-                              {analytics.daily_clicks && analytics.daily_clicks.length > 0 && (
+                              {urlClicks.length > 0 && (
                                 <div className="mt-6 bg-white p-4 rounded-lg shadow-sm">
                                   <h4 className="font-medium text-gray-900 mb-3 flex items-center">
                                     <BarChart3 className="w-4 h-4 mr-2" />
                                     Daily Clicks (Last 7 Days)
                                   </h4>
                                   <div className="flex items-end space-x-2 h-20">
-                                    {analytics.daily_clicks.slice(-7).map((day, index) => {
-                                      const maxClicks = Math.max(...analytics.daily_clicks.slice(-7).map(d => d.clicks))
+                                    {getDailyClicksForUrl(url.id).map((day, index) => {
+                                      const maxClicks = Math.max(...getDailyClicksForUrl(url.id).map(d => d.clicks))
                                       const height = maxClicks > 0 ? (day.clicks / maxClicks) * 60 : 0
                                       return (
                                         <div key={index} className="flex flex-col items-center">
