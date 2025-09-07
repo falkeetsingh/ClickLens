@@ -150,11 +150,20 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     forceLog('✅ Supabase client created');
 
-    // Extract short code
+    // Extract short code - remove function path prefix
     const url = new URL(req.url);
-    const shortCode = url.pathname.slice(1);
+    const fullPath = url.pathname;
     
-    forceLog('🔗 Short code extracted', { shortCode, pathname: url.pathname });
+    // For URLs like "/functions/v1/redirect-new/FjgrBc", extract just "FjgrBc"
+    // Split by "/" and get the last part (the actual short code)
+    const pathParts = fullPath.split('/').filter(part => part.length > 0);
+    const shortCode = pathParts[pathParts.length - 1]; // Get last part
+    
+    forceLog('🔗 Short code extracted', { 
+      fullPath, 
+      pathParts, 
+      shortCode 
+    });
 
     if (!shortCode) {
       forceLog('❌ No short code provided');
