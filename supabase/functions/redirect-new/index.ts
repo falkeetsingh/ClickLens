@@ -117,6 +117,7 @@ function parseUserAgent(userAgent: string) {
 }
 
 serve(async (req) => {
+  // GUARANTEED VISIBLE LOGS
   forceLog('🚀🚀🚀 REDIRECT-NEW FUNCTION STARTED 🚀🚀🚀');
   forceLog('📍 Request details', {
     method: req.method,
@@ -147,21 +148,16 @@ serve(async (req) => {
     }
     
     const supabase = createClient(supabaseUrl, supabaseKey);
+    forceLog('✅ Supabase client created');
 
-    // Extract short code from URL path
+    // Extract short code
     const url = new URL(req.url);
-    // Handle both direct calls and proxied calls
-    const pathParts = url.pathname.split('/');
-    const shortCode = pathParts[pathParts.length - 1]; // Get the last part of the path
+    const shortCode = url.pathname.slice(1);
     
-    forceLog('🔗 Short code extracted', { 
-      shortCode, 
-      pathname: url.pathname,
-      pathParts 
-    });
+    forceLog('🔗 Short code extracted', { shortCode, pathname: url.pathname });
 
-    if (!shortCode || shortCode === 'redirect-new') {
-      forceLog('❌ No valid short code provided');
+    if (!shortCode) {
+      forceLog('❌ No short code provided');
       return new Response('Short code required', { status: 400 });
     }
 
