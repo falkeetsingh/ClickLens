@@ -1,28 +1,8 @@
-
-
 {
   "rewrites": [
     {
       "source": "/:shortCode([a-zA-Z0-9]{6})",
       "destination": "https://uquvvzokpfkbqvngbmeq.supabase.co/functions/v1/redirect-new/:shortCode"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/dashboard",
-      "dest": "/dashboard"
-    },
-    {
-      "src": "/login", 
-      "dest": "/login"
-    },
-    {
-      "src": "/register",
-      "dest": "/register"
-    },
-    {
-      "src": "/",
-      "dest": "/"
     }
   ]
 }
